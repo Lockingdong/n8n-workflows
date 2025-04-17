@@ -1,0 +1,539 @@
+{
+  "name": "Line Message Workflow with Session Clear",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// 初始化全域靜態資料物件\nconst workflowStaticData = $getWorkflowStaticData('global');\n\n// 如果 sessionId 不存在，則建立一個新的\nif (!workflowStaticData.sessionId) {\n  workflowStaticData.sessionId = Math.random().toString(36).substring(2, 15);\n}\n\nreturn [\n  {\n    sessionId: workflowStaticData.sessionId\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        620
+      ],
+      "id": "049fa607-da3d-4c6f-835d-07eddc720de5",
+      "name": "取得 session id"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('是否開啟新對話').first().json.body.events[0].replyToken }}\",\n  \"messages\": [\n      {\n          \"type\": \"text\",\n          \"text\": \"已清除紀錄\"\n      }\n  ]\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        340
+      ],
+      "id": "da2e7418-d55c-4322-9695-cd656b185365",
+      "name": "回應 Line (已清除紀錄)",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "b2LSYnb534zMBvJ9",
+          "name": "Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "z5mvYHwKt8kBoA91",
+          "name": "Line Header Auth account"
+        }
+      },
+      "notes": "has secret"
+    },
+    {
+      "parameters": {
+        "jsCode": "// initialize staticData object\nconst workflowStaticData = $getWorkflowStaticData('global');\n\ndelete workflowStaticData.sessionId\n\nreturn [\n  {\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        420
+      ],
+      "id": "5a5d7eb5-9832-43ed-a679-0ab87b99d074",
+      "name": "清除 session id",
+      "notesInFlow": true,
+      "notes": "開啟新對話"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "f106b22b-f080-42f0-a8bf-54f891f4dbac",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -840,
+        640
+      ],
+      "id": "35a58599-6261-4ef4-8bdd-dce8be4110b2",
+      "name": "Webhook",
+      "webhookId": "f106b22b-f080-42f0-a8bf-54f891f4dbac"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0cbd8f48-947a-4b5d-852e-b972467d5b9d",
+              "leftValue": "={{ $json.body.events[0].type }}",
+              "rightValue": "message",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -620,
+        600
+      ],
+      "id": "30ddba98-40d8-4309-ad8e-e85b980fdd03",
+      "name": "判斷是否為 message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('整合訊息1').first().json.replyToken }}\",\n  \"messages\": [\n      {\n          \"type\": \"text\",\n          \"text\": \"{{ $json.output.replace(/\\n/g, '') }}\"\n      }\n  ]\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1660,
+        780
+      ],
+      "id": "814940f3-8bd3-4417-acb4-f848e4724f8e",
+      "name": "回應 Line",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "b2LSYnb534zMBvJ9",
+          "name": "Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "z5mvYHwKt8kBoA91",
+          "name": "Line Header Auth account"
+        },
+        "httpCustomAuth": {
+          "id": "4tiphpz5IVTAPJsN",
+          "name": "Custom Auth account"
+        }
+      },
+      "notes": "has secret"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1060,
+        1180
+      ],
+      "id": "bf3d5f6c-2916-438c-a328-cacc81818ee5",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        820,
+        1100
+      ],
+      "id": "e223d1d0-d023-45a0-92db-574f12484750",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "bzaBxIz64vuQyT6y",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        1860
+      ],
+      "id": "48f71ae1-46c8-4cda-a1ff-384b007649a4",
+      "name": "When chat message received",
+      "webhookId": "4725fa41-621f-4a44-8745-e5feb2460d0f"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        380,
+        900
+      ],
+      "id": "bc2fc2bd-debb-4954-b488-1b91652a9521",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a helpful assistant"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        880,
+        840
+      ],
+      "id": "9f6cfbe4-3d3b-4a98-be96-641a448b3cd0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('是否開啟新對話').first().json.body.events[0].replyToken }}\",\n  \"messages\": [\n      {\n          \"type\": \"text\",\n          \"text\": \"無法回應此訊息\"\n      }\n  ]\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -340,
+        840
+      ],
+      "id": "f69e13c2-be34-458f-aac7-d0cc9415ac15",
+      "name": "回應 Line (已清除紀錄)1",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "b2LSYnb534zMBvJ9",
+          "name": "Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "z5mvYHwKt8kBoA91",
+          "name": "Line Header Auth account"
+        }
+      },
+      "notes": "has secret"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0cbd8f48-947a-4b5d-852e-b972467d5b9d",
+              "leftValue": "={{ $json.body.events[0].message.text }}",
+              "rightValue": "開啟新對話",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -360,
+        560
+      ],
+      "id": "7d965eee-f512-413a-a77d-4ec9f62b677b",
+      "name": "是否開啟新對話"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"sessionId\": \"{{ $json.sessionId }}\",\n  \"chatInput\": \"{{ $json.chatInput }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        840
+      ],
+      "id": "8b4c8651-8c81-40de-88ea-f69668cd8adb",
+      "name": "整合訊息"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"replyToken\": \"{{ $json.body.events[0].replyToken }}\",\n  \"chatInput\": \"{{ $json.body.events[0].message.text }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -100,
+        720
+      ],
+      "id": "43556491-08e5-4798-9e9c-19c66e0fc915",
+      "name": "整合訊息1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"output\": \"{{ $json.output.replaceAll('\\n', '').replaceAll('\"', '\\'') }}\"\n}\n ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1320,
+        780
+      ],
+      "id": "0568dddd-73bf-4c3d-ba04-d8803c271e9a",
+      "name": "回傳訊息"
+    },
+    {
+      "parameters": {
+        "content": "## 取得 session id \n產生 session id，並將 session id 存入 workflowStaticData ",
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        340,
+        580
+      ],
+      "typeVersion": 1,
+      "id": "1733d18b-87c6-4447-b422-2c3e3cfe8d3e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 清除 session id\n將 session id 從 workflowStaticData 刪除\n ",
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -60,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "83a7c6bf-f0d5-4eb4-8b61-0733b38c668d",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "取得 session id": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "清除 session id": {
+      "main": [
+        [
+          {
+            "node": "回應 Line (已清除紀錄)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "判斷是否為 message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "判斷是否為 message": {
+      "main": [
+        [
+          {
+            "node": "是否開啟新對話",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "回應 Line (已清除紀錄)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回應 Line": {
+      "main": [
+        []
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        []
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "整合訊息",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "回傳訊息",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否開啟新對話": {
+      "main": [
+        [
+          {
+            "node": "清除 session id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "整合訊息1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整合訊息": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整合訊息1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "取得 session id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回傳訊息": {
+      "main": [
+        [
+          {
+            "node": "回應 Line",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "673ab596-7bdf-4f8e-9118-32569abc80a2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "95c921c858eb2e4628c407740526cf18e4b984f241c83e52d7d26fd82f94ba9c"
+  },
+  "id": "gALJtC8syHJZX0vd",
+  "tags": []
+}
