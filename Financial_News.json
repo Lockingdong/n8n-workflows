@@ -1,0 +1,211 @@
+{
+  "name": "Financial_News",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        240
+      ],
+      "id": "46488d11-773a-470b-b184-8a273fc2f029",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "from bs4 import BeautifulSoup\nimport json\n\n# Parse the HTML\nhtml = html = _input.first().json.body\n\nsoup = BeautifulSoup(html, 'html.parser')\n\n# Find all media elements\nmedia_elements = soup.find_all('div', class_='media')\n\n# Create a list to store news data\nnews_data = []\n\n# Extract data from each media element\nfor media in media_elements:\n    # Extract title\n    title_element = media.find('a', class_='subject')\n    title = title_element.get('title') if title_element else title_element.text if title_element else \"\"\n    if not title:\n        title = media.find('a').get('title') if media.find('a') else \"No title found\"\n    \n    # Extract URL\n    url_element = media.find('a', class_='subject')\n    url = url_element.get('href') if url_element else \"\"\n    if not url:\n        url = media.find('a').get('href') if media.find('a') else \"\"\n    \n    # Extract category\n    category_element = media.find('a', class_='type')\n    category = category_element.text if category_element else \"No category found\"\n    \n    # Extract description\n    description_element = media.find('h6', class_='description').find('a')\n    description = description_element.text if description_element else \"No description found\"\n    \n    # Extract image URL\n    image_element = media.find('img')\n    image_url = image_element.get('src') if image_element else \"No image found\"\n    \n    # Extract time\n    time_element = media.find('div', class_='time')\n    time = time_element.text if time_element else \"No time found\"\n    \n    # Create a dictionary with the extracted data\n    news_item = {\n        \"title\": title,\n        \"url\": url,\n        \"category\": category,\n        \"description\": description,\n        \"imageUrl\": image_url,\n        \"time\": time\n    }\n    \n    news_data.append(news_item)\n\n# Output as JSON\nreturn news_data"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        160
+      ],
+      "id": "fa738130-a1f9-4ab8-936b-b99216597443",
+      "name": "Code",
+      "notesInFlow": true,
+      "notes": "將html轉為JSON(結構化) "
+    },
+    {
+      "parameters": {
+        "url": "https://news.ustv.com.tw/newslist/144?listOnly=true",
+        "options": {
+          "browserWSEndpoint": "wss://chrome.browserless.io?token=<your_browserless_token>",
+          "waitUntil": "domcontentloaded"
+        }
+      },
+      "type": "n8n-nodes-puppeteer.puppeteer",
+      "typeVersion": 1,
+      "position": [
+        240,
+        160
+      ],
+      "id": "c0b8c11a-3dce-4148-b284-51edc35b6d58",
+      "name": "Puppeteer",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "notesInFlow": true,
+      "notes": "抓取非凡財金新聞"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        600,
+        160
+      ],
+      "id": "63ffa8bb-393e-4434-9ce8-284fd6d7ec8b",
+      "name": "Aggregate",
+      "notesInFlow": true,
+      "notes": "將多個新聞item整合成一個"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\n\n# 手動解析JSON數據\ndata = _input.first().json.data\n\n# 創建人類可讀的格式，description只取前30字\nhuman_readable = \"\"\nfor i, news in enumerate(data, 1):\n    # 截取description的前30個字符，如果長度不足30則取全部\n    short_desc = news['description'][:30] + \"...\" if len(news['description']) > 30 else news['description']\n    \n    human_readable += f\"{i}. {news['title']}\\n\"\n    human_readable += f\"   {short_desc}\\n\"\n    human_readable += f\"   {news['url'].strip()}\\n\\n\"\n\nreturn [\n  { \"text\": human_readable }\n]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        160
+      ],
+      "id": "e341fb9b-89cb-4c2f-abd3-3063d1e5150e",
+      "name": "Code1",
+      "notesInFlow": true,
+      "notes": "將JSON轉為易讀的文字"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        40,
+        80
+      ],
+      "id": "d90c3da5-4824-4dc6-918a-23fc47e4c948",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/broadcast",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"messages\":[\n        {\n            \"type\":\"text\",\n            \"text\": \"{{ $json.text.replaceAll(\"\\n\", \"  \").replaceAll(\"\\\"\", \"\") }}\"\n        }\n    ]\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        160
+      ],
+      "id": "0c048e14-c7e0-4f88-b41e-623d45c80590",
+      "name": "回應 Line",
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "sFvlJx8EwxQ8AUB7",
+          "name": "Line Header Auth account"
+        }
+      },
+      "notes": "發送至Line群組"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Puppeteer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Puppeteer": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "回應 Line",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Puppeteer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9a530f1f-669c-4911-92f3-12d09ef035d7",
+  "meta": {
+    "instanceId": "89376184c7d90dd2153a9358600300eb86dd213c1f5ffe2da4977b97b456faf4"
+  },
+  "id": "c20mYDmAqXqwi4v0",
+  "tags": []
+}
